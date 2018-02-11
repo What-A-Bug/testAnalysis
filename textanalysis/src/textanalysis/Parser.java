@@ -1,8 +1,13 @@
 package textanalysis;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Time;
 import java.text.DateFormat;
@@ -17,10 +22,19 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import geo.google.GeoAddressStandardizer;
-import geo.google.GeoException;
-import geo.google.datamodel.GeoAddress;
-import geo.google.datamodel.GeoCoordinate;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import com.eclipsesource.json.Json;
+import com.eclipsesource.json.JsonArray;
+import com.eclipsesource.json.JsonObject;
+import com.eclipsesource.json.JsonValue;
+
+
 
 
 public class Parser {
@@ -101,6 +115,18 @@ public class Parser {
 				queryType="wind";
 				i++;
 				break;
+			case "yesterday":
+				queryDate = today.minusDays(1);
+				i++;
+				break;
+			case "today":
+				queryDate = today;
+				i++;
+				break;
+			case "tomorrow":
+				queryDate = today.plusDays(1);
+				i++;
+				break;
 			case "in":
 				i=locParser(i);
 				break;
@@ -134,12 +160,14 @@ public class Parser {
 			errorMessage="Location error";
 			i=parts.length;
 		}
+		
 		try {
 			latAndLon();
-		} catch (GeoException e) {
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 		return i;
 	}
 	
@@ -277,20 +305,31 @@ public class Parser {
 		return j;
 	}
 	
-	public void latAndLon() throws GeoException{
-		// Initialize a new GeoAddressStandardizer-class with your API-Key
-		GeoAddressStandardizer st = new GeoAddressStandardizer("AIzaSyDZOG79QWJZPXBuMZI7PaddN9seq_IxJ_c");
-		// Get a list of possible matching addresses
-		List<GeoAddress> addresses = st.standardizeToGeoAddresses(locationText);
-		// Get the first address (like you posted above)
-		GeoAddress address = addresses.get(0);
-		// Get the coordinates for the address
-		GeoCoordinate coords = address.getCoordinate();
-		// Longitude
-		longitude = coords.getLongitude();
-		// Latitude
-		latitude = coords.getLatitude();
+	public void latAndLon() throws IOException{
+		URL url = new URL(
+                "http://maps.googleapis.com/maps/api/geocode/json?address="
+                        + locationText + "&sensor=true");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Accept", "application/json");
+
+        if (conn.getResponseCode() != 200) {
+            throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
+        }
+        BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+
+        String output = "", full = "";
+        while ((output = br.readLine()) != null) {
+            System.out.println(output);
+            full += output;
+        }
+        JsonValue value = Json.parse(full);
+        JsonArray items = value.asObject().get("results").asArray();
+        JsonObject loc = items.get(0).asObject().get("geometry").asObject().get("location").asObject();
+        latitude = loc.getDouble("lat", 0);
+        longitude = loc.getDouble("lng", 0);
 	}
+	
 	
 	public String getLocation(){
 		return locationText;
