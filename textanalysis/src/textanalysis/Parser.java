@@ -1,5 +1,9 @@
 package textanalysis;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.sql.Time;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -11,6 +15,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+
+import geo.google.GeoAddressStandardizer;
+import geo.google.GeoException;
+import geo.google.datamodel.GeoAddress;
+import geo.google.datamodel.GeoCoordinate;
+
 
 public class Parser {
 	
@@ -29,6 +40,8 @@ public class Parser {
 	String queryType;
 	int flag;
 	String errorMessage;
+	
+	Double longitude, latitude;
 	
 	private void init(String text){
 		this.text = text;
@@ -120,6 +133,12 @@ public class Parser {
 			flag=1;
 			errorMessage="Location error";
 			i=parts.length;
+		}
+		try {
+			latAndLon();
+		} catch (GeoException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return i;
 	}
@@ -258,6 +277,21 @@ public class Parser {
 		return j;
 	}
 	
+	public void latAndLon() throws GeoException{
+		// Initialize a new GeoAddressStandardizer-class with your API-Key
+		GeoAddressStandardizer st = new GeoAddressStandardizer("AIzaSyDZOG79QWJZPXBuMZI7PaddN9seq_IxJ_c");
+		// Get a list of possible matching addresses
+		List<GeoAddress> addresses = st.standardizeToGeoAddresses(locationText);
+		// Get the first address (like you posted above)
+		GeoAddress address = addresses.get(0);
+		// Get the coordinates for the address
+		GeoCoordinate coords = address.getCoordinate();
+		// Longitude
+		longitude = coords.getLongitude();
+		// Latitude
+		latitude = coords.getLatitude();
+	}
+	
 	public String getLocation(){
 		return locationText;
 	}
@@ -268,5 +302,13 @@ public class Parser {
 	
 	public LocalTime gettime(){
 		return queryTime;
+	}
+	
+	public double getlat(){
+		return latitude;
+	}
+	
+	public double getlon(){
+		return longitude;
 	}
 }
